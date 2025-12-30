@@ -13,6 +13,7 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->throttleApi();
+        $middleware->append(\App\Http\Middleware\UseDatabaseEnvironment::class);
         $middleware->alias([
             'blocked' => \App\Http\Middleware\EnsureUserNotBlocked::class,
         ]);
