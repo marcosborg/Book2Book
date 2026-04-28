@@ -2,7 +2,14 @@
 
 namespace App\Providers\Filament;
 
+use App\Filament\Resources\BookResource;
+use App\Filament\Resources\ReportResource;
+use App\Filament\Resources\TradeRequestResource;
+use App\Filament\Resources\UserResource;
+use App\Filament\Widgets\BooksAvailabilityChart;
 use App\Filament\Widgets\MvpStatsWidget;
+use App\Filament\Widgets\TradesStatusChart;
+use App\Filament\Widgets\UsersGrowthChart;
 use Filament\Actions\Action;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
@@ -13,9 +20,6 @@ use Filament\Panel;
 use Filament\PanelProvider;
 use Filament\Support\Colors\Color;
 use Filament\Support\Icons\Heroicon;
-use App\Filament\Widgets\BooksAvailabilityChart;
-use App\Filament\Widgets\TradesStatusChart;
-use App\Filament\Widgets\UsersGrowthChart;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
@@ -35,12 +39,16 @@ class AdminPanelProvider extends PanelProvider
             ->colors([
                 'primary' => Color::Amber,
             ])
-            ->discoverResources(in: app_path('Filament/Resources'), for: 'App\Filament\Resources')
+            ->resources([
+                BookResource::class,
+                ReportResource::class,
+                TradeRequestResource::class,
+                UserResource::class,
+            ])
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\Filament\Pages')
             ->pages([
                 Dashboard::class,
             ])
-            ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\Filament\Widgets')
             ->widgets([
                 MvpStatsWidget::class,
                 UsersGrowthChart::class,

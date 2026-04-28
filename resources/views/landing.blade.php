@@ -304,7 +304,7 @@
                 <a href="#seguranca">Seguranca</a>
                 <a href="#mvp">MVP</a>
             </nav>
-            <a class="btn btn-outline" href="/admin">Backoffice</a>
+            <a class="btn btn-outline" href="/login">Entrar</a>
         </header>
 
         <main class="container">
@@ -314,8 +314,8 @@
                     <h1>Troca livros com pessoas perto de ti. Simples, humano e seguro.</h1>
                     <p>Book2Book e uma plataforma feita para leitores que querem dar nova vida aos seus livros. Descobre titulos disponiveis, pede uma troca e conversa direto com o dono.</p>
                     <div class="cta-group">
-                        <a class="btn btn-primary" href="/admin">Abrir dashboard</a>
-                        <a class="btn btn-outline" href="#mvp">Ver MVP</a>
+                        <a class="btn btn-primary" href="/books">Explorar livros</a>
+                        <a class="btn btn-outline" href="/register">Criar conta</a>
                     </div>
                 </div>
                 <div class="hero-card floating fade-up fade-delay-1">

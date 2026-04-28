@@ -39,6 +39,7 @@ Route::prefix('v1')->group(function () {
         Route::get('trades/{trade}', [TradeController::class, 'show']);
         Route::post('trades/{trade}/accept', [TradeController::class, 'accept']);
         Route::post('trades/{trade}/decline', [TradeController::class, 'decline']);
+        Route::post('trades/{trade}/reject', [TradeController::class, 'decline']);
         Route::post('trades/{trade}/cancel', [TradeController::class, 'cancel']);
         Route::post('trades/{trade}/complete', [TradeController::class, 'complete']);
         Route::get('trades/{trade}/messages', [TradeMessageController::class, 'index']);

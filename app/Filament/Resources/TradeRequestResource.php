@@ -12,12 +12,13 @@ use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Model;
 
 class TradeRequestResource extends Resource
 {
     protected static ?string $model = TradeRequest::class;
 
-    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-arrow-path-rounded-square';
+    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-arrow-path-rounded-square';
 
     public static function form(Schema $schema): Schema
     {
@@ -72,5 +73,15 @@ class TradeRequestResource extends Resource
             'index' => Pages\ListTradeRequests::route('/'),
             'edit' => Pages\EditTradeRequest::route('/{record}/edit'),
         ];
+    }
+
+    public static function canEdit(Model $record): bool
+    {
+        return true;
+    }
+
+    public static function canCreate(): bool
+    {
+        return true;
     }
 }
