@@ -73,7 +73,10 @@ return [
     |
     */
 
-    'connection' => env('SESSION_CONNECTION', 'mysql'),
+    'connection' => env(
+        'SESSION_CONNECTION',
+        filled(env('DB_PROD_DATABASE')) ? 'production' : null
+    ),
 
     /*
     |--------------------------------------------------------------------------
