@@ -129,7 +129,7 @@ class DatabaseEnvironment extends Page
                 $created = count($result['created_tables']);
                 Notification::make()
                     ->title('Production cloned to sandbox')
-                    ->body("Tables copied: {$result['tables']} | Tables created: {$created}")
+                    ->body("Tables copied: {$result['tables']} | Tables created: {$created} | Runtime tables skipped: ".count($result['skipped_tables']))
                     ->success()
                     ->send();
                 if (! empty($result['missing_in_target'])) {
@@ -154,7 +154,7 @@ class DatabaseEnvironment extends Page
                 $created = count($result['created_tables']);
                 Notification::make()
                     ->title('Sandbox cloned to production')
-                    ->body("Tables copied: {$result['tables']} | Tables created: {$created}")
+                    ->body("Tables copied: {$result['tables']} | Tables created: {$created} | Runtime tables skipped: ".count($result['skipped_tables']))
                     ->warning()
                     ->send();
                 if (! empty($result['missing_in_target'])) {

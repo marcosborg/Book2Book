@@ -10,7 +10,20 @@ use RuntimeException;
 class DatabaseCloneService
 {
     /**
-     * @return array{tables:int, created_tables: array<int, string>, missing_in_target: array<int, string>, added_columns: array<string, array<int, string>>}
+     * Runtime tables should not be cloned between environments because they
+     * contain active sessions, locks, queue state, and temporary failures.
+     */
+    private const EXCLUDED_TABLES = [
+        'cache',
+        'cache_locks',
+        'failed_jobs',
+        'job_batches',
+        'jobs',
+        'sessions',
+    ];
+
+    /**
+     * @return array{tables:int, created_tables: array<int, string>, missing_in_target: array<int, string>, added_columns: array<string, array<int, string>>, skipped_tables: array<int, string>}
      */
     public function clone(string $sourceConnection, string $targetConnection): array
     {
@@ -30,6 +43,9 @@ class DatabaseCloneService
 
         $sourceTables = $this->getTables($source);
         $targetTables = $this->getTables($target);
+        $skippedTables = array_values(array_intersect($sourceTables, self::EXCLUDED_TABLES));
+        $sourceTables = array_values(array_diff($sourceTables, self::EXCLUDED_TABLES));
+        $targetTables = array_values(array_diff($targetTables, self::EXCLUDED_TABLES));
         $createdTables = [];
         $missingInTarget = [];
         $addedColumns = [];
@@ -93,6 +109,7 @@ class DatabaseCloneService
             'created_tables' => $createdTables,
             'missing_in_target' => $missingInTarget,
             'added_columns' => array_filter($addedColumns),
+            'skipped_tables' => $skippedTables,
         ];
 
         Log::info('Database cloned', [
@@ -101,6 +118,7 @@ class DatabaseCloneService
             'tables' => $result['tables'],
             'missing_in_target' => $result['missing_in_target'],
             'added_columns' => $result['added_columns'],
+            'skipped_tables' => $result['skipped_tables'],
         ]);
 
         return $result;
