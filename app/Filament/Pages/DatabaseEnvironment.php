@@ -54,6 +54,13 @@ class DatabaseEnvironment extends Page
                         $this->storageLinkAction(),
                     ]),
                 ]),
+            Section::make('Maintenance')
+                ->schema([
+                    Text::make('Use this after changing environment variables or pulling new code in production.'),
+                    Actions::make([
+                        $this->clearCacheAction(),
+                    ]),
+                ]),
         ]);
     }
 
@@ -195,6 +202,36 @@ class DatabaseEnvironment extends Page
                 Notification::make()
                     ->title('Storage link ready')
                     ->body($output ?: 'public/storage now points to storage/app/public.')
+                    ->success()
+                    ->send();
+            });
+    }
+
+    private function clearCacheAction(): Action
+    {
+        return Action::make('clearCache')
+            ->label('Clear cache')
+            ->icon(Heroicon::OutlinedArrowPath)
+            ->requiresConfirmation()
+            ->modalHeading('Clear application cache?')
+            ->modalDescription('This runs php artisan optimize:clear to clear config, route, view, event, and Filament caches.')
+            ->action(function (): void {
+                $exitCode = Artisan::call('optimize:clear');
+                $output = trim(Artisan::output());
+
+                if ($exitCode !== 0) {
+                    Notification::make()
+                        ->title('Cache clear failed')
+                        ->body($output ?: 'The optimize:clear command returned an error.')
+                        ->danger()
+                        ->send();
+
+                    return;
+                }
+
+                Notification::make()
+                    ->title('Cache cleared')
+                    ->body($output ?: 'Application caches were cleared.')
                     ->success()
                     ->send();
             });
