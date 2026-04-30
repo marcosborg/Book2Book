@@ -121,6 +121,7 @@ if (root) {
         register: 'Create account',
         profile: 'Profile',
         books: 'Book catalog',
+        'book-create': 'Add a book',
         'book-detail': 'Book detail',
         library: 'My library',
         trades: 'Trade requests',
@@ -159,7 +160,10 @@ if (root) {
                     <p class="text-sm font-medium text-amber-700">Book exchange MVP</p>
                     <h1 class="text-2xl font-semibold tracking-tight sm:text-3xl">${pageTitle()}</h1>
                 </div>
-                <a href="/books" class="text-sm font-medium text-amber-700 hover:text-amber-900">Discover books</a>
+                <div class="flex flex-wrap gap-2">
+                    <a href="/books" class="btn-secondary">Discover books</a>
+                    ${state.user ? '<a href="/books/create" class="btn-primary">Add my book</a>' : '<a href="/login" class="btn-primary">Login to add books</a>'}
+                </div>
             </div>
             ${state.error ? `<div class="rounded border border-red-200 bg-red-50 p-3 text-sm text-red-800">${escapeHtml(state.error)}</div>` : ''}
             ${state.notice ? `<div class="rounded border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">${escapeHtml(state.notice)}</div>` : ''}
@@ -231,6 +235,15 @@ if (root) {
 
     const booksPage = () => shell(`
         <section class="grid gap-5">
+            <div class="rounded border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
+                <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                        <strong class="block">Tens livros para trocar?</strong>
+                        <span>Adiciona-os na tua biblioteca pessoal. Não precisas de acesso ao backoffice.</span>
+                    </div>
+                    <a href="${state.user ? '/books/create' : '/login'}" class="btn-primary">${state.user ? 'Adicionar livro' : 'Entrar para adicionar'}</a>
+                </div>
+            </div>
             <form data-form="search" class="grid gap-3 rounded border border-stone-200 bg-white p-4 shadow-sm md:grid-cols-5">
                 <input name="q" placeholder="Title or author" value="${escapeHtml(state.filters.q)}" class="field md:col-span-2">
                 <input name="genre" placeholder="Genre" value="${escapeHtml(state.filters.genre)}" class="field">
@@ -245,6 +258,38 @@ if (root) {
             <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">${state.books.map(bookCard).join('') || empty('No available books found.')}</div>
         </section>
     `);
+
+    const bookForm = (submitLabel = 'Add to library') => `
+        <form data-form="book" class="grid gap-3 rounded border border-stone-200 bg-white p-5 shadow-sm">
+            <h2 class="text-lg font-semibold">Book details</h2>
+            ${input('title', 'Title', 'text', true)}
+            ${input('author', 'Author', 'text', true)}
+            ${input('isbn', 'ISBN')}
+            ${input('genre', 'Genre')}
+            ${input('language', 'Language')}
+            <div class="grid gap-1 text-sm">
+                <span class="font-medium text-stone-700">Cover image</span>
+                <label class="cover-dropzone" data-dropzone>
+                    <input name="cover_image" type="file" accept="image/*" class="sr-only" data-cover-input>
+                    <span class="cover-dropzone__preview" data-cover-preview>
+                        <span class="cover-dropzone__icon">+</span>
+                    </span>
+                    <span class="cover-dropzone__text">
+                        <strong>Drag and drop the cover here</strong>
+                        <small>or click to choose JPG, PNG or WebP up to 4 MB</small>
+                    </span>
+                </label>
+            </div>
+            <label class="grid gap-1 text-sm"><span class="font-medium text-stone-700">Condition</span><select name="condition" class="field"><option value="good">Good</option><option value="new_like">Like new</option><option value="acceptable">Acceptable</option><option value="poor">Poor</option></select></label>
+            ${textarea('description', 'Description')}
+            <label class="flex items-center gap-2 rounded border border-stone-200 bg-stone-50 p-3 text-sm font-medium text-stone-700">
+                <input name="is_available" type="checkbox" value="1" checked>
+                Available for exchange
+            </label>
+            <button class="btn-primary" type="submit">${submitLabel}</button>
+            <a href="/library" class="btn-secondary">Back to my library</a>
+        </form>
+    `;
 
     const bookCard = (book) => `
         <article class="grid gap-3 rounded border border-stone-200 bg-white p-4 shadow-sm">
@@ -311,18 +356,23 @@ if (root) {
 
         return shell(`
             <section class="grid gap-5 lg:grid-cols-[380px_1fr]">
-                <form data-form="book" class="grid gap-3 rounded border border-stone-200 bg-white p-5 shadow-sm">
-                    <h2 class="text-lg font-semibold">Add book</h2>
-                    ${input('title', 'Title', 'text', true)}
-                    ${input('author', 'Author', 'text', true)}
-                    ${input('genre', 'Genre')}
-                    ${input('language', 'Language')}
-                    <label class="grid gap-1 text-sm"><span class="font-medium text-stone-700">Condition</span><select name="condition" class="field"><option value="good">Good</option><option value="new_like">Like new</option><option value="acceptable">Acceptable</option><option value="poor">Poor</option></select></label>
-                    ${textarea('description', 'Description')}
-                    <button class="btn-primary" type="submit">Add to library</button>
-                    <div class="rounded border border-dashed border-stone-300 p-3 text-sm text-stone-500">TBR placeholder: personal reading list will live here after the core exchange flow is stable.</div>
-                </form>
+                ${bookForm('Add to library')}
                 <div class="grid gap-4 sm:grid-cols-2">${state.myBooks.map(myBookCard).join('') || empty('Your library is empty.')}</div>
+            </section>
+        `);
+    };
+
+    const bookCreatePage = () => {
+        if (!requireAuth()) {
+            return '';
+        }
+
+        return shell(`
+            <section class="mx-auto grid w-full max-w-2xl gap-4">
+                <div class="rounded border border-stone-200 bg-white p-5 text-sm text-stone-600">
+                    Este formulário cria livros na tua biblioteca pessoal através da API da app, não no backoffice.
+                </div>
+                ${bookForm('Publish book')}
             </section>
         `);
     };
@@ -496,6 +546,8 @@ if (root) {
 
             if (state.page === 'books') {
                 await loadBooks();
+            } else if (state.page === 'book-create') {
+                // Auth is checked by the page renderer.
             } else if (state.page === 'book-detail') {
                 await loadBook();
             } else if (state.page === 'library') {
@@ -516,6 +568,7 @@ if (root) {
             register: () => authPage('register'),
             profile: profilePage,
             books: booksPage,
+            'book-create': bookCreatePage,
             'book-detail': bookDetailPage,
             library: libraryPage,
             trades: tradesPage,
@@ -571,10 +624,21 @@ if (root) {
             }
 
             if (form.dataset.form === 'book') {
-                await api('/me/books', { method: 'POST', body: JSON.stringify({ ...data, is_available: true }) });
+                const payload = new FormData(form);
+                payload.set('is_available', data.is_available === '1' ? '1' : '0');
+
+                if (!payload.get('cover_image')?.name) {
+                    payload.delete('cover_image');
+                }
+
+                await api('/me/books', { method: 'POST', body: payload });
                 form.reset();
-                await loadLibrary();
                 state.notice = 'Book added to your library.';
+                if (state.page === 'library') {
+                    await loadLibrary();
+                } else {
+                    navigate('/library');
+                }
             }
 
             if (form.dataset.form === 'message') {
@@ -629,6 +693,74 @@ if (root) {
                 await loadNotifications();
             }
         });
+    });
+
+    document.addEventListener('dragover', (event) => {
+        const dropzone = event.target.closest('[data-dropzone]');
+        if (!dropzone) {
+            return;
+        }
+
+        event.preventDefault();
+        dropzone.classList.add('cover-dropzone--active');
+    });
+
+    document.addEventListener('dragleave', (event) => {
+        const dropzone = event.target.closest('[data-dropzone]');
+        if (!dropzone || dropzone.contains(event.relatedTarget)) {
+            return;
+        }
+
+        dropzone.classList.remove('cover-dropzone--active');
+    });
+
+    document.addEventListener('drop', (event) => {
+        const dropzone = event.target.closest('[data-dropzone]');
+        if (!dropzone) {
+            return;
+        }
+
+        event.preventDefault();
+        dropzone.classList.remove('cover-dropzone--active');
+
+        const file = event.dataTransfer?.files?.[0];
+        const input = dropzone.querySelector('[data-cover-input]');
+
+        if (file && input) {
+            const transfer = new DataTransfer();
+            transfer.items.add(file);
+            input.files = transfer.files;
+            input.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+    });
+
+    document.addEventListener('change', (event) => {
+        const input = event.target.closest('[data-cover-input]');
+        if (!input) {
+            return;
+        }
+
+        const dropzone = input.closest('[data-dropzone]');
+        const preview = dropzone?.querySelector('[data-cover-preview]');
+        const file = input.files?.[0];
+
+        if (!dropzone || !preview || !file) {
+            return;
+        }
+
+        if (!file.type.startsWith('image/')) {
+            input.value = '';
+            state.error = 'Please choose an image file.';
+            render();
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = () => {
+            preview.innerHTML = `<img src="${reader.result}" alt="">`;
+            dropzone.classList.add('cover-dropzone--filled');
+        };
+        reader.readAsDataURL(file);
     });
 
     render();

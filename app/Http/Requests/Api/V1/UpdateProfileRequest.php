@@ -21,6 +21,7 @@ class UpdateProfileRequest extends FormRequest
             'email' => ['sometimes', 'nullable', 'email', 'max:255', Rule::unique('users', 'email')->ignore($userId)],
             'phone' => ['sometimes', 'nullable', 'string', 'max:30'],
             'city' => ['sometimes', 'nullable', 'string', 'max:120'],
+            'postal_code' => ['sometimes', 'nullable', 'string', 'max:20'],
             'lat' => ['sometimes', 'nullable', 'numeric', 'between:-90,90'],
             'lng' => ['sometimes', 'nullable', 'numeric', 'between:-180,180'],
         ];

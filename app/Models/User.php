@@ -3,12 +3,14 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+use Filament\Models\Contracts\FilamentUser;
+use Filament\Panel;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 
-class User extends Authenticatable
+class User extends Authenticatable implements FilamentUser
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
     use HasApiTokens, HasFactory, Notifiable;
@@ -25,9 +27,11 @@ class User extends Authenticatable
         'profile_photo_path',
         'phone',
         'city',
+        'postal_code',
         'lat',
         'lng',
         'is_blocked',
+        'is_admin',
     ];
 
     /**
@@ -53,7 +57,13 @@ class User extends Authenticatable
             'lat' => 'float',
             'lng' => 'float',
             'is_blocked' => 'boolean',
+            'is_admin' => 'boolean',
         ];
+    }
+
+    public function canAccessPanel(Panel $panel): bool
+    {
+        return $this->is_admin && ! $this->is_blocked;
     }
 
     public function books()

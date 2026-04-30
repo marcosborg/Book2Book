@@ -31,9 +31,11 @@ class UserFactory extends Factory
             'remember_token' => Str::random(10),
             'phone' => null,
             'city' => null,
+            'postal_code' => null,
             'lat' => null,
             'lng' => null,
             'is_blocked' => false,
+            'is_admin' => false,
         ];
     }
 

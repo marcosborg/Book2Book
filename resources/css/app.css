@@ -22,4 +22,32 @@
     .btn-secondary {
         @apply inline-flex items-center justify-center rounded border border-stone-300 bg-white px-4 py-2 text-sm font-semibold text-stone-800 transition hover:bg-stone-100;
     }
+
+    .cover-dropzone {
+        @apply flex cursor-pointer items-center gap-4 rounded border-2 border-dashed border-stone-300 bg-stone-50 p-4 text-stone-700 transition hover:border-amber-500 hover:bg-amber-50;
+    }
+
+    .cover-dropzone--active {
+        @apply border-amber-600 bg-amber-100;
+    }
+
+    .cover-dropzone__preview {
+        @apply grid aspect-[3/4] w-24 shrink-0 place-items-center overflow-hidden rounded bg-white text-2xl font-semibold text-amber-700 shadow-sm;
+    }
+
+    .cover-dropzone__preview img {
+        @apply h-full w-full object-cover;
+    }
+
+    .cover-dropzone__text {
+        @apply grid gap-1 text-sm;
+    }
+
+    .cover-dropzone__text strong {
+        @apply text-stone-900;
+    }
+
+    .cover-dropzone__text small {
+        @apply text-stone-500;
+    }
 }
