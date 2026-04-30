@@ -10,7 +10,7 @@ use RuntimeException;
 class DatabaseCloneService
 {
     /**
-     * @return array{tables:int, created_tables: array<int, string>, missing_in_target: array<int, string>}
+     * @return array{tables:int, created_tables: array<int, string>, missing_in_target: array<int, string>, added_columns: array<string, array<int, string>>}
      */
     public function clone(string $sourceConnection, string $targetConnection): array
     {
@@ -32,9 +32,11 @@ class DatabaseCloneService
         $targetTables = $this->getTables($target);
         $createdTables = [];
         $missingInTarget = [];
+        $addedColumns = [];
 
         foreach ($sourceTables as $table) {
             if (in_array($table, $targetTables, true)) {
+                $addedColumns[$table] = $this->syncMissingColumns($source, $target, $table);
                 continue;
             }
 
@@ -54,39 +56,43 @@ class DatabaseCloneService
 
         $tables = array_values(array_intersect($sourceTables, $targetTables));
 
-        $target->statement('SET FOREIGN_KEY_CHECKS=0');
+        try {
+            $target->statement('SET FOREIGN_KEY_CHECKS=0');
 
-        foreach ($tables as $table) {
-            $target->statement("TRUNCATE TABLE `{$table}`");
-        }
-
-        foreach ($tables as $table) {
-            $primaryKey = $this->getPrimaryKey($source, $table);
-            $query = $source->table($table);
-
-            if ($primaryKey) {
-                $query->orderBy($primaryKey)->chunkById(500, function ($rows) use ($target, $table) {
-                    $payload = $rows->map(fn ($row) => (array) $row)->all();
-                    if ($payload) {
-                        $target->table($table)->insert($payload);
-                    }
-                }, $primaryKey);
-            } else {
-                $query->orderByRaw('1')->chunk(500, function ($rows) use ($target, $table) {
-                    $payload = $rows->map(fn ($row) => (array) $row)->all();
-                    if ($payload) {
-                        $target->table($table)->insert($payload);
-                    }
-                });
+            foreach ($tables as $table) {
+                $target->statement("TRUNCATE TABLE `{$table}`");
             }
-        }
 
-        $target->statement('SET FOREIGN_KEY_CHECKS=1');
+            foreach ($tables as $table) {
+                $primaryKey = $this->getPrimaryKey($source, $table);
+                $targetColumns = $this->getColumnNames($target, $table);
+                $query = $source->table($table);
+
+                if ($primaryKey) {
+                    $query->orderBy($primaryKey)->chunkById(500, function ($rows) use ($target, $table, $targetColumns) {
+                        $payload = $this->filterRowsForTarget($rows, $targetColumns);
+                        if ($payload) {
+                            $target->table($table)->insert($payload);
+                        }
+                    }, $primaryKey);
+                } else {
+                    $query->orderByRaw('1')->chunk(500, function ($rows) use ($target, $table, $targetColumns) {
+                        $payload = $this->filterRowsForTarget($rows, $targetColumns);
+                        if ($payload) {
+                            $target->table($table)->insert($payload);
+                        }
+                    });
+                }
+            }
+        } finally {
+            $target->statement('SET FOREIGN_KEY_CHECKS=1');
+        }
 
         $result = [
             'tables' => count($tables),
             'created_tables' => $createdTables,
             'missing_in_target' => $missingInTarget,
+            'added_columns' => array_filter($addedColumns),
         ];
 
         Log::info('Database cloned', [
@@ -94,6 +100,7 @@ class DatabaseCloneService
             'target' => $targetConnection,
             'tables' => $result['tables'],
             'missing_in_target' => $result['missing_in_target'],
+            'added_columns' => $result['added_columns'],
         ]);
 
         return $result;
@@ -121,6 +128,101 @@ class DatabaseCloneService
         }
 
         return $result[0]->Column_name ?? null;
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function getColumnNames($connection, string $table): array
+    {
+        return collect($connection->select("SHOW FULL COLUMNS FROM `{$table}`"))
+            ->pluck('Field')
+            ->all();
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function syncMissingColumns($source, $target, string $table): array
+    {
+        $sourceColumns = $source->select("SHOW FULL COLUMNS FROM `{$table}`");
+        $targetColumnNames = $this->getColumnNames($target, $table);
+        $addedColumns = [];
+        $previousColumn = null;
+
+        foreach ($sourceColumns as $column) {
+            $columnName = $column->Field;
+
+            if (in_array($columnName, $targetColumnNames, true)) {
+                $previousColumn = $columnName;
+                continue;
+            }
+
+            $target->statement(sprintf(
+                'ALTER TABLE `%s` ADD COLUMN %s %s',
+                $table,
+                $this->columnDefinitionSql($column),
+                $previousColumn ? "AFTER `{$previousColumn}`" : 'FIRST',
+            ));
+
+            $targetColumnNames[] = $columnName;
+            $addedColumns[] = $columnName;
+            $previousColumn = $columnName;
+        }
+
+        return $addedColumns;
+    }
+
+    private function columnDefinitionSql(object $column): string
+    {
+        $sql = "`{$column->Field}` {$column->Type}";
+        $collation = $column->Collation ?? null;
+
+        if ($collation) {
+            $charset = str($collation)->beforeLast('_')->toString();
+            $sql .= " CHARACTER SET {$charset} COLLATE {$collation}";
+        }
+
+        $sql .= $column->Null === 'YES' ? ' NULL' : ' NOT NULL';
+
+        if ($column->Default !== null) {
+            $sql .= ' DEFAULT '.$this->defaultValueSql($column->Default);
+        } elseif ($column->Null === 'YES') {
+            $sql .= ' DEFAULT NULL';
+        }
+
+        if ($column->Extra) {
+            $sql .= " {$column->Extra}";
+        }
+
+        if ($column->Comment) {
+            $sql .= " COMMENT ".$this->quoteSqlString($column->Comment);
+        }
+
+        return $sql;
+    }
+
+    private function defaultValueSql(mixed $value): string
+    {
+        $upper = strtoupper((string) $value);
+
+        if (in_array($upper, ['CURRENT_TIMESTAMP', 'CURRENT_TIMESTAMP()', 'NULL'], true)) {
+            return $upper;
+        }
+
+        return $this->quoteSqlString((string) $value);
+    }
+
+    private function quoteSqlString(string $value): string
+    {
+        return "'".str_replace("'", "''", $value)."'";
+    }
+
+    private function filterRowsForTarget($rows, array $targetColumns): array
+    {
+        return $rows
+            ->map(fn ($row) => array_intersect_key((array) $row, array_flip($targetColumns)))
+            ->all();
     }
 
     private function ensureDatabaseExists(string $connectionName): void
