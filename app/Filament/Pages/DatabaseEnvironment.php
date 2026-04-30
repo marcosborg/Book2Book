@@ -12,6 +12,7 @@ use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Text;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
+use Illuminate\Support\Facades\Artisan;
 
 class DatabaseEnvironment extends Page
 {
@@ -45,6 +46,14 @@ class DatabaseEnvironment extends Page
                         $this->cloneSandboxToProductionAction(),
                     ]),
                 ]),
+            Section::make('Storage')
+                ->schema([
+                    Text::make(fn () => $this->storageLinkStatus())->badge(),
+                    Text::make('Creates or refreshes the public/storage link used by uploaded book covers.'),
+                    Actions::make([
+                        $this->storageLinkAction(),
+                    ]),
+                ]),
         ]);
     }
 
@@ -68,6 +77,13 @@ class DatabaseEnvironment extends Page
     private function currentConnection(): string
     {
         return app(DatabaseEnvironmentService::class)->getConnectionName();
+    }
+
+    private function storageLinkStatus(): string
+    {
+        return file_exists(public_path('storage'))
+            ? 'Storage link: available'
+            : 'Storage link: missing';
     }
 
     private function switchToSandboxAction(): Action
@@ -148,6 +164,39 @@ class DatabaseEnvironment extends Page
                         ->danger()
                         ->send();
                 }
+            });
+    }
+
+    private function storageLinkAction(): Action
+    {
+        return Action::make('storageLink')
+            ->label('Generate storage link')
+            ->icon(Heroicon::OutlinedLink)
+            ->requiresConfirmation()
+            ->modalHeading('Generate public storage link?')
+            ->modalDescription('This runs php artisan storage:link --force so uploaded files can be served from public/storage.')
+            ->action(function (): void {
+                $exitCode = Artisan::call('storage:link', [
+                    '--force' => true,
+                ]);
+
+                $output = trim(Artisan::output());
+
+                if ($exitCode !== 0) {
+                    Notification::make()
+                        ->title('Storage link failed')
+                        ->body($output ?: 'The storage link command returned an error.')
+                        ->danger()
+                        ->send();
+
+                    return;
+                }
+
+                Notification::make()
+                    ->title('Storage link ready')
+                    ->body($output ?: 'public/storage now points to storage/app/public.')
+                    ->success()
+                    ->send();
             });
     }
 }
