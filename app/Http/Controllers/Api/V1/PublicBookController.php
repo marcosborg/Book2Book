@@ -69,7 +69,7 @@ class PublicBookController extends ApiController
 
         if (($distance !== null || $order === 'distance') && ! $hasCoords) {
             throw ValidationException::withMessages([
-                'distance_km' => ['Set your location before searching by distance.'],
+                'distance_km' => ['Indica a tua cidade ou coordenadas no perfil antes de pesquisar por distância.'],
             ]);
         }
 

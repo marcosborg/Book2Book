@@ -262,17 +262,17 @@ if (root) {
                 </div>
             </div>
             <form data-form="search" class="grid gap-3 rounded border border-stone-200 bg-white p-4 shadow-sm md:grid-cols-5">
-                <input name="q" placeholder="Título ou autor" value="${escapeHtml(state.filters.q)}" class="field md:col-span-2">
+                <input name="q" placeholder="Título ou autor" value="${escapeHtml(state.filters.q)}" class="field self-start md:col-span-2">
                 <div class="grid gap-2">${genreSelects(state.filters.genre)}</div>
-                <input name="language" placeholder="Idioma" value="${escapeHtml(state.filters.language)}" class="field">
-                <select name="order" class="field">
+                <input name="language" placeholder="Idioma" value="${escapeHtml(state.filters.language)}" class="field self-start">
+                <select name="order" class="field self-start">
                     <option value="recent" ${state.filters.order === 'recent' ? 'selected' : ''}>Mais recentes</option>
                     <option value="distance" ${state.filters.order === 'distance' ? 'selected' : ''}>Distância</option>
                 </select>
                 <input name="distance_km" type="number" min="0" step="any" placeholder="Distância máxima (km)" value="${escapeHtml(state.filters.distance_km)}" class="field">
                 <button class="btn-primary md:col-span-4" type="submit">Pesquisar</button>
             </form>
-            <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">${state.books.map(bookCard).join('') || empty('No available books found.')}</div>
+            <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">${state.books.map(bookCard).join('') || empty('Não foram encontrados livros disponíveis.')}</div>
         </section>
     `);
 
@@ -549,6 +549,7 @@ if (root) {
     };
 
     const loadBooks = async () => {
+        state.books = [];
         const params = new URLSearchParams(Object.entries(state.filters).filter(([, value]) => value !== ''));
         if (state.user?.lat && state.user?.lng) {
             params.set('lat', state.user.lat);
