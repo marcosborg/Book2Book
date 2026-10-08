@@ -100,14 +100,16 @@ it('shows the offered book and public requester profile to the owner', function 
         ->assertJsonPath('data.offered_book.id', $offered->id)
         ->assertJsonPath('data.message', 'Troco por este livro.');
 
+    $this->getJson('/api/v1/users/'.$reader->id)
+        ->assertOk()
+        ->assertJsonPath('data.user.id', $reader->id)
+        ->assertJsonPath('data.books.0.owner.name', $reader->name);
+
     $this->postJson('/api/v1/trades/'.$tradeId.'/accept')
         ->assertOk();
     expect($requested->refresh()->is_available)->toBeFalse()
         ->and($offered->refresh()->is_available)->toBeFalse();
 
-    $this->getJson('/api/v1/users/'.$reader->id)
-        ->assertOk()
-        ->assertJsonPath('data.user.id', $reader->id);
 });
 
 it('rejects a book offered by another user', function () {

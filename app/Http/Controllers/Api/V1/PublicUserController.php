@@ -17,7 +17,7 @@ class PublicUserController extends ApiController
         return response()->json([
             'data' => [
                 'user' => new UserPublicResource($user),
-                'books' => BookPublicResource::collection($user->books()->available()->latest()->limit(12)->get()),
+                'books' => BookPublicResource::collection($user->books()->available()->with('owner')->latest()->limit(12)->get()),
                 'reviews' => ReviewResource::collection($user->reviewsReceived()->with('reviewer')->latest()->limit(10)->get()),
             ],
             'meta' => (object) [],
