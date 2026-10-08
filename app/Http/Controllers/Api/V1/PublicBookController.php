@@ -5,8 +5,11 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Requests\Api\V1\SearchBooksRequest;
 use App\Http\Resources\BookPublicResource;
 use App\Models\Book;
+use App\Services\LocationService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Validation\ValidationException;
 
 class PublicBookController extends ApiController
 {
@@ -16,6 +19,9 @@ class PublicBookController extends ApiController
     public function search(SearchBooksRequest $request)
     {
         $user = Auth::guard('sanctum')->user();
+        if ($user && ($request->filled('distance_km') || $request->input('order') === 'distance')) {
+            app(LocationService::class)->fillCoordinates($user);
+        }
         $lat = $request->input('lat', $user?->lat);
         $lng = $request->input('lng', $user?->lng);
         $distance = $request->input('distance_km');
@@ -39,7 +45,20 @@ class PublicBookController extends ApiController
         }
 
         if ($request->filled('genre')) {
-            $query->where('genre', $request->input('genre'));
+            $genre = $request->string('genre')->toString();
+            [$mainGenre, $subGenre] = array_pad(explode(' / ', $genre, 2), 2, null);
+            $knownSubgenres = $this->genreTree()[$mainGenre] ?? [];
+
+            $query->where(function ($books) use ($genre, $subGenre, $knownSubgenres) {
+                $books->where('books.genre', $genre)
+                    ->orWhere('books.genre', 'like', $genre.' / %');
+
+                if ($subGenre && in_array($subGenre, $knownSubgenres, true)) {
+                    $books->orWhere('books.genre', $subGenre);
+                } elseif (! $subGenre && $knownSubgenres) {
+                    $books->orWhereIn('books.genre', $knownSubgenres);
+                }
+            });
         }
 
         if ($request->filled('language')) {
@@ -48,18 +67,24 @@ class PublicBookController extends ApiController
 
         $hasCoords = $lat !== null && $lng !== null;
 
+        if (($distance !== null || $order === 'distance') && ! $hasCoords) {
+            throw ValidationException::withMessages([
+                'distance_km' => ['Set your location before searching by distance.'],
+            ]);
+        }
+
         if ($hasCoords) {
+            $distanceSql = '(6371 * acos(cos(radians(?)) * cos(radians(users.lat)) * cos(radians(users.lng) - radians(?)) + sin(radians(?)) * sin(radians(users.lat))))';
+            $bindings = [$lat, $lng, $lat];
+
             $query->join('users', 'users.id', '=', 'books.user_id')
                 ->whereNotNull('users.lat')
                 ->whereNotNull('users.lng')
                 ->addSelect('books.*')
-                ->selectRaw(
-                    '(6371 * acos(cos(radians(?)) * cos(radians(users.lat)) * cos(radians(users.lng) - radians(?)) + sin(radians(?)) * sin(radians(users.lat)))) as distance_km',
-                    [$lat, $lng, $lat]
-                );
+                ->selectRaw($distanceSql.' as distance_km', $bindings);
 
             if ($distance !== null) {
-                $query->having('distance_km', '<=', (float) $distance);
+                $query->whereRaw($distanceSql.' <= CAST(? AS DECIMAL(10, 2))', [...$bindings, (float) $distance]);
             }
 
             if ($order === 'distance') {
@@ -75,6 +100,37 @@ class PublicBookController extends ApiController
 
         return BookPublicResource::collection($books)
             ->additional(['meta' => $this->paginationMeta($books)]);
+    }
+
+    public function genres(): JsonResponse
+    {
+        return response()->json(['data' => $this->genreTree(), 'meta' => (object) []]);
+    }
+
+    /**
+     * @return array<string, array<int, string>>
+     */
+    private function genreTree(): array
+    {
+        $genres = config('genres');
+        $knownSubgenres = collect($genres)->flatten()->all();
+
+        foreach (Book::query()->whereNotNull('genre')->distinct()->pluck('genre') as $storedGenre) {
+            if (str_contains($storedGenre, ' / ')) {
+                [$main, $sub] = explode(' / ', $storedGenre, 2);
+                $genres[$main] ??= [];
+                if ($sub && ! in_array($sub, $genres[$main], true)) {
+                    $genres[$main][] = $sub;
+                }
+            } elseif (! in_array($storedGenre, $knownSubgenres, true) && ! array_key_exists($storedGenre, $genres)) {
+                $genres['Outros'] ??= [];
+                if (! in_array($storedGenre, $genres['Outros'], true)) {
+                    $genres['Outros'][] = $storedGenre;
+                }
+            }
+        }
+
+        return $genres;
     }
 
     /**

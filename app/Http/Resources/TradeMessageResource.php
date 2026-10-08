@@ -17,6 +17,12 @@ class TradeMessageResource extends JsonResource
         return [
             'id' => $this->id,
             'message' => $this->message,
+            'attachment_name' => $this->attachment_name,
+            'attachment_mime' => $this->attachment_mime,
+            'attachment_url' => $this->attachment_path
+                ? route('trade-messages.attachment', ['trade' => $this->trade_request_id, 'message' => $this->id], false)
+                : null,
+            'read_at' => $this->read_at,
             'sender' => $this->whenLoaded('sender', function () {
                 return new UserPublicResource($this->sender);
             }),

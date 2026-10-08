@@ -15,11 +15,13 @@ it('creates a notification when a trade is requested', function () {
     $owner = User::factory()->create();
     $book = Book::factory()->for($owner, 'owner')->create();
     $requester = User::factory()->create();
+    $offered = Book::factory()->for($requester, 'owner')->create();
 
     Sanctum::actingAs($requester);
 
     $this->postJson('/api/v1/trades', [
         'book_id' => $book->id,
+        'offered_book_id' => $offered->id,
     ])->assertCreated();
 
     $this->assertDatabaseHas('notifications', [
@@ -43,7 +45,7 @@ it('creates a notification when a trade message is sent', function () {
 
     Sanctum::actingAs($requester);
 
-    $this->postJson('/api/v1/trades/' . $trade->id . '/messages', [
+    $this->postJson('/api/v1/trades/'.$trade->id.'/messages', [
         'message' => 'Ping',
     ])->assertCreated();
 

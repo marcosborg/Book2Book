@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Requests\Api\V1\StoreTradeRequest;
 use App\Http\Resources\TradeRequestResource;
 use App\Models\Book;
+use App\Models\TradeMessage;
 use App\Models\TradeRequest as TradeRequestModel;
 use App\Services\NotificationService;
 use App\Services\TradeService;
@@ -17,8 +18,7 @@ class TradeController extends ApiController
     public function __construct(
         protected TradeService $tradeService,
         protected NotificationService $notificationService
-    ) {
-    }
+    ) {}
 
     /**
      * List trade requests for authenticated user.
@@ -29,7 +29,10 @@ class TradeController extends ApiController
         $role = $request->query('role', 'all');
         $status = $request->query('status');
 
-        $query = TradeRequestModel::query()->with(['book', 'requester', 'owner']);
+        $query = TradeRequestModel::query()->with(['book', 'offeredBook', 'requester', 'owner'])
+            ->withCount(['messages as unread_messages_count' => function ($messages) use ($user) {
+                $messages->where('sender_id', '!=', $user->id)->whereNull('read_at');
+            }]);
 
         if ($role === 'requester') {
             $query->where('requester_id', $user->id);
@@ -48,8 +51,18 @@ class TradeController extends ApiController
 
         $trades = $query->latest()->paginate($this->perPage($request));
 
+        $unreadMessages = TradeMessage::query()
+            ->whereNull('read_at')
+            ->where('sender_id', '!=', $user->id)
+            ->whereHas('tradeRequest', function ($trades) use ($user) {
+                $trades->where('requester_id', $user->id)->orWhere('owner_id', $user->id);
+            })
+            ->count();
+
         return TradeRequestResource::collection($trades)
-            ->additional(['meta' => $this->paginationMeta($trades)]);
+            ->additional(['meta' => array_merge($this->paginationMeta($trades), [
+                'unread_messages_count' => $unreadMessages,
+            ])]);
     }
 
     /**
@@ -60,8 +73,9 @@ class TradeController extends ApiController
         $user = $request->user();
         $book = Book::findOrFail($request->input('book_id'));
 
-        $trade = $this->tradeService->createTrade($user, $book, $request->input('message'));
-        $trade->load(['book', 'requester', 'owner']);
+        $offeredBook = Book::findOrFail($request->integer('offered_book_id'));
+        $trade = $this->tradeService->createTrade($user, $book, $offeredBook, $request->input('message'));
+        $trade->load(['book', 'offeredBook', 'requester', 'owner']);
 
         $this->notificationService->tradeRequested($trade, $user);
 
@@ -76,7 +90,7 @@ class TradeController extends ApiController
     {
         $this->authorize('view', $trade);
 
-        $trade->load(['book', 'requester', 'owner']);
+        $trade->load(['book', 'offeredBook', 'requester', 'owner']);
 
         return (new TradeRequestResource($trade))
             ->additional(['meta' => (object) []]);
@@ -96,7 +110,7 @@ class TradeController extends ApiController
             throw $exception;
         }
 
-        $trade->load(['book', 'requester', 'owner']);
+        $trade->load(['book', 'offeredBook', 'requester', 'owner']);
         $this->notificationService->tradeStatusChanged($trade, request()->user(), $trade->status->value);
 
         return (new TradeRequestResource($trade))
@@ -111,7 +125,7 @@ class TradeController extends ApiController
         $this->authorize('decline', $trade);
 
         $trade = $this->tradeService->declineTrade($trade);
-        $trade->load(['book', 'requester', 'owner']);
+        $trade->load(['book', 'offeredBook', 'requester', 'owner']);
 
         $this->notificationService->tradeStatusChanged($trade, request()->user(), $trade->status->value);
 
@@ -127,7 +141,7 @@ class TradeController extends ApiController
         $this->authorize('cancel', $trade);
 
         $trade = $this->tradeService->cancelTrade($trade);
-        $trade->load(['book', 'requester', 'owner']);
+        $trade->load(['book', 'offeredBook', 'requester', 'owner']);
 
         $this->notificationService->tradeCancelled($trade, request()->user());
 
@@ -143,7 +157,7 @@ class TradeController extends ApiController
         $this->authorize('complete', $trade);
 
         $trade = $this->tradeService->completeTrade($trade);
-        $trade->load(['book', 'requester', 'owner']);
+        $trade->load(['book', 'offeredBook', 'requester', 'owner']);
 
         $this->notificationService->tradeStatusChanged($trade, request()->user(), $trade->status->value);
 

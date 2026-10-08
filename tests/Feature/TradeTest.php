@@ -13,11 +13,13 @@ it('creates a trade request', function () {
     $owner = User::factory()->create();
     $book = Book::factory()->for($owner, 'owner')->create();
     $requester = User::factory()->create();
+    $offered = Book::factory()->for($requester, 'owner')->create();
 
     Sanctum::actingAs($requester);
 
     $response = $this->postJson('/api/v1/trades', [
         'book_id' => $book->id,
+        'offered_book_id' => $offered->id,
         'message' => 'Interested in trade.',
     ]);
 
@@ -39,7 +41,7 @@ it('accepts a trade request and marks the book unavailable', function () {
 
     Sanctum::actingAs($owner);
 
-    $response = $this->postJson('/api/v1/trades/' . $trade->id . '/accept');
+    $response = $this->postJson('/api/v1/trades/'.$trade->id.'/accept');
 
     $response->assertOk()
         ->assertJsonPath('data.status', TradeStatus::Accepted->value);
@@ -61,7 +63,7 @@ it('declines a trade request', function () {
 
     Sanctum::actingAs($owner);
 
-    $response = $this->postJson('/api/v1/trades/' . $trade->id . '/decline');
+    $response = $this->postJson('/api/v1/trades/'.$trade->id.'/decline');
 
     $response->assertOk()
         ->assertJsonPath('data.status', TradeStatus::Declined->value);
@@ -81,7 +83,7 @@ it('cancels a trade request', function () {
 
     Sanctum::actingAs($requester);
 
-    $response = $this->postJson('/api/v1/trades/' . $trade->id . '/cancel');
+    $response = $this->postJson('/api/v1/trades/'.$trade->id.'/cancel');
 
     $response->assertOk()
         ->assertJsonPath('data.status', TradeStatus::Cancelled->value);
@@ -101,7 +103,7 @@ it('completes a trade request', function () {
 
     Sanctum::actingAs($owner);
 
-    $response = $this->postJson('/api/v1/trades/' . $trade->id . '/complete');
+    $response = $this->postJson('/api/v1/trades/'.$trade->id.'/complete');
 
     $response->assertOk()
         ->assertJsonPath('data.status', TradeStatus::Completed->value);

@@ -11,7 +11,7 @@ use Illuminate\Validation\ValidationException;
 
 class TradeService
 {
-    public function createTrade(User $requester, Book $book, ?string $message = null): TradeRequest
+    public function createTrade(User $requester, Book $book, Book $offeredBook, ?string $message = null): TradeRequest
     {
         if (! $book->is_available) {
             throw ValidationException::withMessages([
@@ -22,6 +22,12 @@ class TradeService
         if ($book->user_id === $requester->id) {
             throw ValidationException::withMessages([
                 'book_id' => ['You cannot request your own book.'],
+            ]);
+        }
+
+        if ($offeredBook->user_id !== $requester->id || ! $offeredBook->is_available) {
+            throw ValidationException::withMessages([
+                'offered_book_id' => ['Choose an available book from your own library.'],
             ]);
         }
 
@@ -37,9 +43,10 @@ class TradeService
             ]);
         }
 
-        return DB::transaction(function () use ($requester, $book, $message) {
+        return DB::transaction(function () use ($requester, $book, $message, $offeredBook) {
             return TradeRequest::create([
                 'book_id' => $book->id,
+                'offered_book_id' => $offeredBook->id,
                 'requester_id' => $requester->id,
                 'owner_id' => $book->user_id,
                 'status' => TradeStatus::Pending,
@@ -51,15 +58,27 @@ class TradeService
     public function acceptTrade(TradeRequest $trade): TradeRequest
     {
         return DB::transaction(function () use ($trade) {
+            $trade = TradeRequest::query()->lockForUpdate()->findOrFail($trade->id);
             if ($trade->status !== TradeStatus::Pending) {
                 throw ValidationException::withMessages([
                     'status' => ['Trade is not pending.'],
                 ]);
             }
 
-            if (! $trade->book->is_available) {
+            $requestedBook = Book::query()->lockForUpdate()->findOrFail($trade->book_id);
+            $offeredBook = $trade->offered_book_id
+                ? Book::query()->lockForUpdate()->findOrFail($trade->offered_book_id)
+                : null;
+
+            if (! $requestedBook->is_available) {
                 throw ValidationException::withMessages([
                     'book_id' => ['Book is not available.'],
+                ]);
+            }
+
+            if ($offeredBook && ! $offeredBook->is_available) {
+                throw ValidationException::withMessages([
+                    'offered_book_id' => ['The offered book is no longer available.'],
                 ]);
             }
 
@@ -67,7 +86,8 @@ class TradeService
             $trade->accepted_at = now();
             $trade->save();
 
-            $trade->book()->update(['is_available' => false]);
+            $requestedBook->update(['is_available' => false]);
+            $offeredBook?->update(['is_available' => false]);
 
             return $trade;
         });

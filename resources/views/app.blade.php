@@ -10,6 +10,7 @@
                 page: @json($page ?? request()->route()?->defaults['page'] ?? 'books'),
                 bookId: @json(request()->route('book')),
                 tradeId: @json(request()->route('trade')),
+                userId: @json(request()->route('user')),
             };
         </script>
     </head>

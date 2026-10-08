@@ -15,3 +15,4 @@ Route::view('/notifications', 'app', ['page' => 'notifications'])->name('notific
 
 Route::get('/books/{book}', fn (string $book) => view('app', ['page' => 'book-detail']))->name('books.show');
 Route::get('/trades/{trade}/chat', fn (string $trade) => view('app', ['page' => 'chat']))->name('trades.chat');
+Route::get('/users/{user}', fn (string $user) => view('app', ['page' => 'user-profile']))->name('users.show');

@@ -6,6 +6,7 @@ use App\Enums\TradeStatus;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class TradeRequest extends Model
 {
@@ -13,6 +14,7 @@ class TradeRequest extends Model
 
     protected $fillable = [
         'book_id',
+        'offered_book_id',
         'requester_id',
         'owner_id',
         'status',
@@ -31,9 +33,14 @@ class TradeRequest extends Model
         'completed_at' => 'datetime',
     ];
 
-    public function book()
+    public function book(): BelongsTo
     {
-        return $this->belongsTo(Book::class);
+        return $this->belongsTo(Book::class)->withTrashed();
+    }
+
+    public function offeredBook(): BelongsTo
+    {
+        return $this->belongsTo(Book::class, 'offered_book_id')->withTrashed();
     }
 
     public function requester()

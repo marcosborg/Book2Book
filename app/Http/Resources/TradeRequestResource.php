@@ -21,6 +21,8 @@ class TradeRequestResource extends JsonResource
             'book' => $this->whenLoaded('book', function () {
                 return new BookResource($this->book);
             }),
+            'offered_book' => $this->whenLoaded('offeredBook', fn () => $this->offeredBook ? new BookResource($this->offeredBook) : null),
+            'unread_messages_count' => (int) ($this->unread_messages_count ?? 0),
             'requester' => $this->whenLoaded('requester', function () {
                 return new UserPublicResource($this->requester);
             }),

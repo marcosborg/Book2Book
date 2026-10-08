@@ -8,6 +8,7 @@ use App\Http\Requests\Api\V1\UpdateProfileRequest;
 use App\Http\Resources\NotificationResource;
 use App\Http\Resources\UserResource;
 use App\Models\DeviceToken;
+use App\Services\LocationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -32,6 +33,12 @@ class MeController extends ApiController
 
         $user->fill($request->validated());
         $user->save();
+        if ($request->filled('city') && ! $request->filled('lat') && ! $request->filled('lng')) {
+            $user->lat = null;
+            $user->lng = null;
+            $user->save();
+            app(LocationService::class)->fillCoordinates($user);
+        }
 
         return (new UserResource($user->refresh()))
             ->additional(['meta' => (object) []]);
@@ -86,7 +93,9 @@ class MeController extends ApiController
             ->paginate($this->perPage($request));
 
         return NotificationResource::collection($notifications)
-            ->additional(['meta' => $this->paginationMeta($notifications)]);
+            ->additional(['meta' => array_merge($this->paginationMeta($notifications), [
+                'unread_count' => $request->user()->unreadNotifications()->count(),
+            ])]);
     }
 
     /**

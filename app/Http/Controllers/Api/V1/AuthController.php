@@ -6,6 +6,7 @@ use App\Http\Requests\Api\V1\LoginRequest;
 use App\Http\Requests\Api\V1\RegisterRequest;
 use App\Http\Resources\AuthResource;
 use App\Models\User;
+use App\Services\LocationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Hash;
 
@@ -25,6 +26,8 @@ class AuthController extends ApiController
             'lat' => $request->input('lat'),
             'lng' => $request->input('lng'),
         ]);
+
+        app(LocationService::class)->fillCoordinates($user);
 
         $token = $user->createToken($request->userAgent() ?: 'api')->plainTextToken;
 

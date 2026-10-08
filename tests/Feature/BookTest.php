@@ -17,6 +17,10 @@ it('creates, updates, and deletes a book', function () {
     $createResponse = $this->post('/api/v1/me/books', [
         'title' => 'Book A',
         'author' => 'Author A',
+        'isbn' => '9780000000000',
+        'description' => 'A book in good condition.',
+        'genre' => 'Ficção / Romance',
+        'language' => 'Português',
         'condition' => 'good',
         'cover_image' => UploadedFile::fake()->image('cover.jpg'),
     ]);
@@ -24,14 +28,20 @@ it('creates, updates, and deletes a book', function () {
     $createResponse->assertCreated();
     $bookId = $createResponse->json('data.id');
 
-    $updateResponse = $this->put('/api/v1/me/books/' . $bookId, [
+    $updateResponse = $this->put('/api/v1/me/books/'.$bookId, [
         'title' => 'Book A+',
     ]);
 
     $updateResponse->assertOk()
         ->assertJsonPath('data.title', 'Book A+');
 
-    $deleteResponse = $this->delete('/api/v1/me/books/' . $bookId);
+    $this->post('/api/v1/me/books/'.$bookId, [
+        '_method' => 'PUT',
+        'title' => 'Book A++',
+        'cover_image' => UploadedFile::fake()->image('new-cover.jpg'),
+    ])->assertOk()->assertJsonPath('data.title', 'Book A++');
+
+    $deleteResponse = $this->delete('/api/v1/me/books/'.$bookId);
     $deleteResponse->assertOk();
 
     expect(Book::withTrashed()->find($bookId))->not->toBeNull();

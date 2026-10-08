@@ -16,13 +16,13 @@ class UpdateBookRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'title' => ['sometimes', 'nullable', 'string', 'max:255'],
-            'author' => ['sometimes', 'nullable', 'string', 'max:255'],
-            'isbn' => ['sometimes', 'nullable', 'string', 'max:32'],
-            'description' => ['sometimes', 'nullable', 'string', 'max:2000'],
-            'genre' => ['sometimes', 'nullable', 'string', 'max:120'],
-            'language' => ['sometimes', 'nullable', 'string', 'max:60'],
-            'condition' => ['sometimes', 'nullable', Rule::in(array_column(BookCondition::cases(), 'value'))],
+            'title' => ['sometimes', 'required', 'string', 'max:255'],
+            'author' => ['sometimes', 'required', 'string', 'max:255'],
+            'isbn' => ['sometimes', 'required', 'string', 'max:32'],
+            'description' => ['sometimes', 'required', 'string', 'max:2000'],
+            'genre' => ['sometimes', 'required', 'string', 'max:120'],
+            'language' => ['sometimes', 'required', 'string', 'max:60'],
+            'condition' => ['sometimes', 'required', Rule::in(array_column(BookCondition::cases(), 'value'))],
             'cover_image' => ['sometimes', 'nullable', 'image', 'max:4096'],
             'is_available' => ['sometimes', 'nullable', 'boolean'],
         ];

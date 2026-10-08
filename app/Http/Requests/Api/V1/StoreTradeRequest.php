@@ -15,7 +15,13 @@ class StoreTradeRequest extends FormRequest
     {
         return [
             'book_id' => ['required', 'integer', 'exists:books,id'],
+            'offered_book_id' => ['required', 'integer', 'exists:books,id'],
             'message' => ['nullable', 'string', 'max:1000'],
         ];
+    }
+
+    public function messages(): array
+    {
+        return ['offered_book_id.required' => 'Choose a book from your library to offer in exchange.'];
     }
 }

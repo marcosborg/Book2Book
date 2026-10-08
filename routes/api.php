@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\MeController;
 use App\Http\Controllers\Api\V1\MyBookController;
 use App\Http\Controllers\Api\V1\PublicBookController;
+use App\Http\Controllers\Api\V1\PublicUserController;
 use App\Http\Controllers\Api\V1\ReviewController;
 use App\Http\Controllers\Api\V1\TradeController;
 use App\Http\Controllers\Api\V1\TradeMessageController;
@@ -17,7 +18,9 @@ Route::prefix('v1')->group(function () {
     });
 
     Route::get('books/search', [PublicBookController::class, 'search']);
+    Route::get('books/genres', [PublicBookController::class, 'genres']);
     Route::get('books/{book}', [PublicBookController::class, 'show']);
+    Route::get('users/{user}', [PublicUserController::class, 'show']);
 
     Route::middleware(['auth:sanctum', 'blocked'])->group(function () {
         Route::get('me', [MeController::class, 'show']);
@@ -44,6 +47,7 @@ Route::prefix('v1')->group(function () {
         Route::post('trades/{trade}/complete', [TradeController::class, 'complete']);
         Route::get('trades/{trade}/messages', [TradeMessageController::class, 'index']);
         Route::post('trades/{trade}/messages', [TradeMessageController::class, 'store']);
+        Route::get('trades/{trade}/messages/{message}/attachment', [TradeMessageController::class, 'attachment'])->name('trade-messages.attachment');
 
         Route::post('trades/{trade}/review', [ReviewController::class, 'store']);
         Route::get('users/{user}/reviews', [ReviewController::class, 'index']);

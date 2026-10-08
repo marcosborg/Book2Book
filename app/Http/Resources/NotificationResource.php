@@ -18,6 +18,12 @@ class NotificationResource extends JsonResource
             'id' => $this->id,
             'type' => $this->type,
             'data' => $this->data,
+            'title' => match (class_basename($this->type)) {
+                'TradeRequested' => 'Novo pedido de troca',
+                'TradeMessageReceived' => 'Nova mensagem',
+                'TradeStatusChanged' => 'Estado da troca atualizado',
+                default => 'Notificação',
+            },
             'read_at' => $this->read_at,
             'created_at' => $this->created_at,
         ];
